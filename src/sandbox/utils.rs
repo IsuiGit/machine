@@ -1,5 +1,5 @@
 use std::fs;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 pub fn copy_file(source: &Path, destination: &Path) -> Result<String, String> {
     // Check source exists
@@ -18,4 +18,13 @@ pub fn copy_file(source: &Path, destination: &Path) -> Result<String, String> {
     let _ = fs::copy(source, &dst).map_err(|e| format!("Error on copy script: {}", e));
     // return filename
     Ok(file_name.to_string())
+}
+
+pub fn get_last_dir(path: &mut PathBuf) -> Option<&str> {
+    if let Some(s) = path.to_str(){
+        if s.ends_with('/') || s.ends_with('\\') {
+            path.pop();
+        }
+    }
+    path.file_name()?.to_str()
 }
