@@ -1,10 +1,10 @@
-mod utils;
 pub mod func;
 mod info;
 
 pub use info::*;
 
 use std::path::PathBuf;
+use func::remove_environment;
 
 pub struct PythonInfo {
     path: PathBuf,
@@ -45,5 +45,13 @@ impl EnvironmentInfo {
 
     pub fn version(&self) -> String {
         self.version.clone()
+    }
+}
+
+impl Drop for EnvironmentInfo {
+    fn drop(&mut self) {
+        if let Err(e) = remove_environment(&self.path) {
+            eprintln!("Warning: failed to cleanup venv at {:?}: {}", self.path, e);
+        }
     }
 }

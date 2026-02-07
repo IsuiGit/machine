@@ -1,4 +1,4 @@
-use super::utils::*;
+use crate::utils::*;
 use super::{PythonInfo, EnvironmentInfo};
 
 use std::{
@@ -30,9 +30,9 @@ pub fn get_python() -> Result<PathBuf, String> {
 }
 
 // Create PythonInfo object on given Python executable path or Exception as String
-pub fn create_python_info(python_executable_path: PathBuf) -> Result<PythonInfo, String> {
+pub fn create_python_info(python_executable_path: &PathBuf) -> Result<PythonInfo, String> {
     // Run Python by it's full system path with --version arg and getting it output
-    let output = Command::new(&python_executable_path) // Create a command
+    let output = Command::new(python_executable_path) // Create a command
         .arg("--version") // add arg to command
         .output() // get command output
         .map_err(|e| format!("Exception at Python executable: {}", e))?; // if command output is std::io::Error map it to String
@@ -65,7 +65,7 @@ pub fn make_environment() -> Result<PathBuf, String> {
     // Get Python executable from PATH
     let python_path = get_python()?;
     // Getting current working directory
-    let cwd = env::current_dir().unwrap_or_else(|_| PathBuf::from("C:\\"));
+    let cwd = get_cwd();
     println!("Set current working directory as {:?}", cwd);
     let environment_name = Uuid::new_v4().to_string();
     // Create venv path from env_name and cwd
@@ -88,7 +88,7 @@ pub fn make_environment() -> Result<PathBuf, String> {
 }
 
 // Runnable of Python env
-pub fn get_environment(environment_path: PathBuf) -> Result<EnvironmentInfo, String>{
+pub fn get_environment(environment_path: &PathBuf) -> Result<EnvironmentInfo, String>{
     let python_bin_path = environment_path.join("Scripts").join("python.exe");
     let environment_activate_path = environment_path.join("Scripts").join("activate.bat");
     // Validate Python executable exists
@@ -100,9 +100,9 @@ pub fn get_environment(environment_path: PathBuf) -> Result<EnvironmentInfo, Str
         return Err(format!("Smth wrong! No environment activate sript at {}", python_bin_path.display()));
     };
     // Getting Python EnvironmentInfo
-    let python_environment_info = create_python_info(python_bin_path.clone())?;
+    let python_environment_info = create_python_info(&python_bin_path)?;
     Ok(EnvironmentInfo {
-        path: environment_path,
+        path: environment_path.to_path_buf(),
         executable: python_bin_path,
         activate: environment_activate_path,
         version: python_environment_info.version,
@@ -110,11 +110,11 @@ pub fn get_environment(environment_path: PathBuf) -> Result<EnvironmentInfo, Str
 }
 
 // Remover of environment
-pub fn remove_environment(environment_path: PathBuf) -> Result<(), String> {
+pub fn remove_environment(environment_path: &PathBuf) -> Result<(), String> {
     if !environment_path.exists() {
         return Err(format!("Environment at {} is also removed", environment_path.display()));
     }
-    fs::remove_dir_all(&environment_path)
+    fs::remove_dir_all(environment_path)
         .map_err(|e| e.to_string())
         .map(|()| {
             println!("Python env successefuly removed at {}", environment_path.display());

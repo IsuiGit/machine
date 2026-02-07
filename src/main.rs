@@ -2,6 +2,7 @@ mod cli;
 mod app;
 mod sandbox;
 mod python;
+mod utils;
 
 use clap::Parser;
 use cli::*;

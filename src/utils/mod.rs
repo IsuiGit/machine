@@ -1,6 +1,20 @@
-use std::fs;
-use std::path::{Path, PathBuf};
+use std::{
+    fs,
+    env,
+    path::{Path, PathBuf},
+};
 
+// Abstaract checker of non-empty file
+fn is_non_empty_file(path: &Path) -> bool {
+    path.exists() && fs::metadata(path).map(|meta| meta.is_file() && meta.len() > 0).unwrap_or(false)
+}
+
+// Abstract iterator for file search
+pub fn find_file_in_dir(dir: &Path, names: &[&str]) -> Option<PathBuf> {
+    names.iter().map(|name| dir.join(name)).find(|candidate| is_non_empty_file(candidate))
+}
+
+// Abstract file copy method
 pub fn copy_file(source: &Path, destination: &Path) -> Result<String, String> {
     // Check source exists
     if !source.exists() {
@@ -20,11 +34,16 @@ pub fn copy_file(source: &Path, destination: &Path) -> Result<String, String> {
     Ok(file_name.to_string())
 }
 
-pub fn get_last_dir(path: &mut PathBuf) -> Option<&str> {
+// Abstract last dir/file in path
+pub fn get_last(path: &mut PathBuf) -> Option<&str> {
     if let Some(s) = path.to_str(){
         if s.ends_with('/') || s.ends_with('\\') {
             path.pop();
         }
     }
     path.file_name()?.to_str()
+}
+
+pub fn get_cwd() -> PathBuf {
+    env::current_dir().unwrap_or_else(|_| PathBuf::from("C:\\"))
 }
