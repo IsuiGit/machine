@@ -69,7 +69,8 @@ impl Sandbox{
                 let _ = tx.send(result);
             } else {
                 let _ = tx.send(
-                    ErrError::new(ErrorKind::Other,"Child already taken")));
+                    Err(Error::new(ErrorKind::Other,"Child already taken"))
+                );
             }
         });
         // Set timer
