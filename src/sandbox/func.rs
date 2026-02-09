@@ -8,20 +8,17 @@ use crate::python::func::{
 
 use crossbeam::channel::{
     self,
-    select,
     tick,
+    select,
 };
 
 use std::{
     fs::File,
     io::Write,
-    process::{Command, Output},
+    process::Output,
     path::{Path, PathBuf},
     sync::{Arc, Mutex},
-    thread::spawn,
     time::Duration,
-    process::Stdio,
-    io::{ErrorKind, Error}
 };
 
 impl Sandbox{
@@ -29,6 +26,10 @@ impl Sandbox{
         let venv_path = make_environment()?;
         let venv = get_environment(&venv_path)?;
         let file = copy_file(&Path::new(&script_path), &venv.path())?;
+        let file_size = get_file_size_kb(&Path::new(&file))?;
+        if file_size > self.max_code_size_kb {
+            return Err("Your file size more than max file size (in kb)".to_string())
+        }
         let cwd = get_cwd();
         let output = cwd.join(get_last(&mut venv.path())
             .map(|s| format!("{}.machine", s))
@@ -50,52 +51,21 @@ impl Sandbox{
         // Main channels
         let (tx, rx) = channel::unbounded();
         // Bind comma
-        let child = Command::new(&exec)
-            .current_dir(&dir)
-            .arg(&arg)
-            .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
-            .spawn()
-            .map_err(|e| format!("Failed to start: {}", e))?;
+        let child = spawn_child_process(&exec, &dir, &arg)?;
         // Wrap in Arc<Mutex> for shared ownership
         let child_arc = Arc::new(Mutex::new(Some(child)));
         let child_for_thread = Arc::clone(&child_arc);
         // Spawn comma
-        let binding_handle = spawn(move || {
-            // Take ownership of the Child from the Mutex
-            let child_opt = child_for_thread.lock().unwrap().take();
-            if let Some(child) = child_opt {
-                let result = child.wait_with_output();
-                let _ = tx.send(result);
-            } else {
-                let _ = tx.send(
-                    Err(Error::new(ErrorKind::Other,"Child already taken"))
-                );
-            }
-        });
+        let binding_handle = spawn_execution_thread(child_for_thread, tx);
         // Set timer
         let timer = tick(Duration::from_secs(self.timeout_seconds));
         // Select Ok or Kill
-        select!{
+        select! {
             recv(rx) -> msg => {
-                binding_handle.join().ok();
-                match msg {
-                    Ok(Ok(output)) => Ok(output),
-                    Ok(Err(e)) => Err(format!("Command failed: {}", e)),
-                    Err(_) => Err("Channel error".into()),
-                }
+                handle_command_completion(msg, binding_handle)
             },
             recv(timer) -> _ => {
-                // Try to take the child to kill it
-                if let Some(mut child) = child_arc.lock().unwrap().take() {
-                    child.kill().ok();
-                    child.wait().ok();
-                } else {
-                    // Child was already taken by the thread
-                    // The thread might still be waiting, so we can't kill directly
-                }
-                binding_handle.join().ok();
-                Err(format!("Timeout after {} seconds", self.timeout_seconds))
+                handle_timeout(self.timeout_seconds, binding_handle, child_arc)
             }
         }
     }
