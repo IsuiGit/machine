@@ -30,13 +30,9 @@ impl App {
             }
             Command::CheckSandboxCapabilities { path_to_yaml_file: path } => {
                 let sandbox = if path.is_empty() { Sandbox::default() } else { Sandbox::from_yaml_file(path.clone())? };
-                println!("--- Sandbox capabilities ({}) ---",
-                    if path.is_empty() { "default" } else { &path });
+                println!("--- Sandbox capabilities ({}) ---", if path.is_empty() { "default" } else { &path });
                 println!("Timeout (seconds): {}", sandbox.timeout_seconds());
-                println!("Max memory (MB): {}", sandbox.max_memory_mb());
                 println!("Max code size (KB): {}", sandbox.max_code_size_kb());
-                println!("Allow network: {}", sandbox.allow_network());
-                println!("Allow file I/O: {}", sandbox.allow_file_io());
             }
             Command::Run { path_to_script: path, path_to_yaml_file: yaml_path } => {
                 let sandbox = if yaml_path.is_empty() { Sandbox::default() } else { Sandbox::from_yaml_file(yaml_path.clone())? };

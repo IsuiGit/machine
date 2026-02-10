@@ -9,7 +9,7 @@ pub fn is_non_empty_file(path: &Path) -> Result<bool, String> {
     match fs::metadata(path) {
         Ok(metadata) => Ok(metadata.is_file() && metadata.len() > 0),
         Err(e) => match e.kind() {
-            ErrorKind::NotFound => Err(format!("File '{}' not found", path.display())),
+            ErrorKind::NotFound => Err(format!("File '{}' not found on non-empty check", path.display())),
             ErrorKind::PermissionDenied => Err(format!("No access for '{}'", path.display())),
             _ => Err(format!("Error in file_size: {}", e)),
         }
@@ -34,7 +34,7 @@ pub fn get_file_size_kb(path: &Path) -> Result<u64, String> {
     match fs::metadata(path) {
         Ok(metadata) => Ok(metadata.len() / 1024),
         Err(e) => match e.kind() {
-            ErrorKind::NotFound => Err(format!("File '{}' not found", path.display())),
+            ErrorKind::NotFound => Err(format!("File '{}' not found on filesize check", path.display())),
             ErrorKind::PermissionDenied => Err(format!("No access for '{}'", path.display())),
             _ => Err(format!("Error in file_size: {}", e)),
         }
@@ -42,7 +42,7 @@ pub fn get_file_size_kb(path: &Path) -> Result<u64, String> {
 }
 
 // Abstract file copy method
-pub fn copy_file(source: &Path, destination: &Path) -> Result<String, String> {
+pub fn copy_file(source: &Path, destination: &Path) -> Result<PathBuf, String> {
     // Check source exists
     if !source.exists() {
         return Err(format!("File not found: {}", source.display()));
@@ -55,8 +55,9 @@ pub fn copy_file(source: &Path, destination: &Path) -> Result<String, String> {
     let file_name = source.file_name().ok_or("Can't get file name")?.to_string_lossy();
     // Final destination
     let dst = destination.join(&*file_name);
+    println!("Destination filepath: {}", dst.display());
     // Copy sript file into venv
-    let _ = fs::copy(source, &dst).map_err(|e| format!("Error on copy script: {}", e));
+    fs::copy(source, &dst).map_err(|e| format!("Error on copy script: {}", e))?;
     // return filename
-    Ok(file_name.to_string())
+    Ok(dst)
 }

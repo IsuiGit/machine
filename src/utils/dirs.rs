@@ -1,16 +1,14 @@
 use std::{
-    path::PathBuf,
+    path::{Path, PathBuf},
     env,
 };
 
 // Abstract last dir/file in path
-pub fn get_last(path: &mut PathBuf) -> Option<&str> {
-    if let Some(s) = path.to_str(){
-        if s.ends_with('/') || s.ends_with('\\') {
-            path.pop();
-        }
-    }
-    path.file_name()?.to_str()
+pub fn get_last(path: &Path) -> Option<&str> {
+    let components: Vec<_> = path.components().collect();
+    components.last()
+        .and_then(|comp| comp.as_os_str().to_str())
+        .filter(|s| !s.is_empty())
 }
 
 // Getting current work directory

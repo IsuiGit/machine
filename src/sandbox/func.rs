@@ -22,16 +22,22 @@ impl Sandbox{
         let venv_path = make_environment()?;
         let venv = get_environment(&venv_path)?;
         let file = copy_file(&Path::new(&script_path), &venv.path())?;
-        let file_size = get_file_size_kb(&Path::new(&file))?;
+        println!("Copied script file into: {}", file.display());
+        let file_size = get_file_size_kb(file.as_ref())?;
         if file_size > self.max_code_size_kb {
             return Err("Your file size more than max file size (in kb)".to_string())
         }
         let cwd = get_cwd();
-        let output = cwd.join(get_last(&mut venv.path())
-            .map(|s| format!("{}.machine", s))
-            .unwrap_or_default()
-        );
-        let args: &[&str] = &[file.as_str()];
+        let filename = match get_last(venv.path().as_ref()) {
+            Some(name) => format!("{}.machine", name),
+            None => String::from("unregistered.machine"),
+        };
+        let output = cwd.join(filename);
+        let script_path_as_str = match file.as_os_str().to_str() {
+            Some(s) => s,
+            None => return Err("Can't transform path from script file to string".to_string()),
+        };
+        let args: &[&str] = &[script_path_as_str];
         let execution_result = self.execute_with_timeout(&venv.executable(), &venv.path(), &args, self.timeout_seconds)?;
         let stdout = &execution_result.stdout;
         let stderr = &execution_result.stderr;
