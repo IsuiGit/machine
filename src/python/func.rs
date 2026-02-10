@@ -1,5 +1,8 @@
 use crate::utils::*;
-use super::{PythonInfo, EnvironmentInfo};
+use super::{
+    PythonInfo,
+    EnvironmentInfo
+};
 
 use std::{
     fs,
@@ -21,7 +24,7 @@ pub fn get_python() -> Result<PathBuf, String> {
     for search_dir in env::split_paths(&path_var) {
         println!("Looking in {}", search_dir.display());
         if let Ok(Some(python_path)) = find_file_in_dir(&search_dir, &possible_names) {
-            println!("Python was foun at {}", python_path.display());
+            println!("Python was found at {}", python_path.display());
             return Ok(python_path);
         }
     }

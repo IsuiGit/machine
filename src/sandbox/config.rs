@@ -9,7 +9,6 @@ use std::fs;
 pub struct SandboxConfig {
     pub timeout_seconds: u64,
     pub max_memory_mb: u64,
-    pub max_output_kb: u64,
     pub max_code_size_kb: u64,
     pub allow_network: bool,
     pub allow_file_io: bool,
@@ -20,7 +19,6 @@ impl Default for SandboxConfig {
         SandboxConfig {
             timeout_seconds: 5,
             max_memory_mb: 128,
-            max_output_kb: 1024,
             max_code_size_kb: 10,
             allow_network: false,
             allow_file_io: false,

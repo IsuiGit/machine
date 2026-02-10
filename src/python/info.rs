@@ -1,5 +1,8 @@
 use super::func::*;
-use super::{PythonInfo, EnvironmentInfo};
+use super::{
+    PythonInfo,
+    EnvironmentInfo
+};
 
 // Public method getting info about Python with output -> PythonInfo || Exception as String
 pub fn get_python_info() -> Result<PythonInfo, String> {

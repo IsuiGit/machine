@@ -34,7 +34,6 @@ impl App {
                     if path.is_empty() { "default" } else { &path });
                 println!("Timeout (seconds): {}", sandbox.timeout_seconds());
                 println!("Max memory (MB): {}", sandbox.max_memory_mb());
-                println!("Max output (KB): {}", sandbox.max_output_kb());
                 println!("Max code size (KB): {}", sandbox.max_code_size_kb());
                 println!("Allow network: {}", sandbox.allow_network());
                 println!("Allow file I/O: {}", sandbox.allow_file_io());

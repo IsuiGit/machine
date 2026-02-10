@@ -6,22 +6,18 @@ use crate::python::func::{
     get_environment,
 };
 
-use crossbeam::channel::{
-    self,
-    tick,
-    select,
-};
-
 use std::{
     fs::File,
     io::Write,
-    process::Output,
+    process::{Command, Output, Stdio},
     path::{Path, PathBuf},
-    sync::{Arc, Mutex},
+    sync::mpsc::{channel, RecvTimeoutError},
     time::Duration,
+    thread,
 };
 
 impl Sandbox{
+    // Main executable
     pub fn run(&self, script_path: String) -> Result<(), String>{
         let venv_path = make_environment()?;
         let venv = get_environment(&venv_path)?;
@@ -35,7 +31,8 @@ impl Sandbox{
             .map(|s| format!("{}.machine", s))
             .unwrap_or_default()
         );
-        let execution_result = self.execute_with_tiemout(venv.executable(), venv.path(), file)?;
+        let args: &[&str] = &[file.as_str()];
+        let execution_result = self.execute_with_timeout(&venv.executable(), &venv.path(), &args, self.timeout_seconds)?;
         let stdout = &execution_result.stdout;
         let stderr = &execution_result.stderr;
         if !stderr.is_empty() {
@@ -47,25 +44,40 @@ impl Sandbox{
     }
 
     // Learn it earlier
-    fn execute_with_tiemout(&self, exec: PathBuf, dir: PathBuf, arg: String) -> Result<Output, String> {
-        // Main channels
-        let (tx, rx) = channel::unbounded();
-        // Bind comma
-        let child = spawn_child_process(&exec, &dir, &arg)?;
-        // Wrap in Arc<Mutex> for shared ownership
-        let child_arc = Arc::new(Mutex::new(Some(child)));
-        let child_for_thread = Arc::clone(&child_arc);
-        // Spawn comma
-        let binding_handle = spawn_execution_thread(child_for_thread, tx);
-        // Set timer
-        let timer = tick(Duration::from_secs(self.timeout_seconds));
-        // Select Ok or Kill
-        select! {
-            recv(rx) -> msg => {
-                handle_command_completion(msg, binding_handle)
-            },
-            recv(timer) -> _ => {
-                handle_timeout(self.timeout_seconds, binding_handle, child_arc)
+    fn execute_with_timeout(&self, exec: &PathBuf, dir: &PathBuf, args: &[&str], timeout: u64) -> Result<Output, String> {
+        // Start child process
+        let child = Command::new(exec)
+            .current_dir(dir)
+            .args(args)
+            .stdout(Stdio::piped())
+            .stderr(Stdio::piped())
+            .spawn()
+            .map_err(|e| format!("Failed to spawn process: {}", e))?;
+        // Create sender/receiver pair
+        let (sender, receiver) = channel();
+        // Get child process id
+        let child_id = child.id();
+        // Run child in thread
+        thread::spawn(move || {
+            match child.wait_with_output() {
+                Ok(output) => {
+                    let _ = sender.send(Ok(output));
+                }
+                Err(e) => {
+                    let _ = sender.send(Err(format!("Process error: {}", e)));
+                }
+            }
+        });
+        // Wait thread result
+        match receiver.recv_timeout(Duration::from_secs(timeout)) {
+            Ok(result) => result,
+            Err(RecvTimeoutError::Timeout) => {
+                force_kill_process(child_id);
+                Err(format!("Timeout after {} seconds", timeout))
+            }
+            Err(RecvTimeoutError::Disconnected) => {
+                force_kill_process(child_id);
+                Err("Thread died unexpectedly".to_string())
             }
         }
     }
