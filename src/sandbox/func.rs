@@ -10,7 +10,7 @@ use std::{
     fs::File,
     io::Write,
     process::{Command, Output, Stdio},
-    path::{Path, PathBuf},
+    path::Path,
     sync::mpsc::{channel, RecvTimeoutError},
     time::Duration,
     thread,
@@ -38,7 +38,13 @@ impl Sandbox{
             None => return Err("Can't transform path from script file to string".to_string()),
         };
         let args: &[&str] = &[script_path_as_str];
-        let execution_result = self.execute_with_timeout(&venv.executable(), &venv.path(), &args, self.timeout_seconds)?;
+        println!("Start script execution");
+        let execution_result = self.execute_with_timeout(
+            venv.executable().as_ref(),
+            venv.path().as_ref(),
+            &args,
+            Duration::from_secs(self.timeout_seconds)
+        )?;
         let stdout = &execution_result.stdout;
         let stderr = &execution_result.stderr;
         if !stderr.is_empty() {
@@ -50,7 +56,7 @@ impl Sandbox{
     }
 
     // Learn it earlier
-    fn execute_with_timeout(&self, exec: &PathBuf, dir: &PathBuf, args: &[&str], timeout: u64) -> Result<Output, String> {
+    fn execute_with_timeout(&self, exec: &Path, dir: &Path, args: &[&str], timeout: Duration) -> Result<Output, String> {
         // Start child process
         let child = Command::new(exec)
             .current_dir(dir)
@@ -75,14 +81,14 @@ impl Sandbox{
             }
         });
         // Wait thread result
-        match receiver.recv_timeout(Duration::from_secs(timeout)) {
+        match receiver.recv_timeout(timeout) {
             Ok(result) => result,
             Err(RecvTimeoutError::Timeout) => {
-                force_kill_process(child_id);
-                Err(format!("Timeout after {} seconds", timeout))
+                force_kill_process(child_id)?;
+                Err(format!("Timeout after {:?}", timeout))
             }
             Err(RecvTimeoutError::Disconnected) => {
-                force_kill_process(child_id);
+                force_kill_process(child_id)?;
                 Err("Thread died unexpectedly".to_string())
             }
         }
