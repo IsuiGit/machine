@@ -34,9 +34,9 @@ impl App {
                 println!("Timeout (seconds): {}", sandbox.timeout_seconds());
                 println!("Max code size (KB): {}", sandbox.max_code_size_kb());
             }
-            Command::Run { path_to_script: path, path_to_yaml_file: yaml_path } => {
+            Command::Run { path_to_script: path, path_to_yaml_file: yaml_path, host: listener_host, port: listener_port} => {
                 let sandbox = if yaml_path.is_empty() { Sandbox::default() } else { Sandbox::from_yaml_file(yaml_path.clone())? };
-                sandbox.run(path).map(|_| println!("Script execution successfully complete")).map_err(|e| e)?
+                sandbox.run(path, listener_host, listener_port).map(|_| println!("Script execution successfully complete")).map_err(|e| e)?
             }
         }
         Ok(())

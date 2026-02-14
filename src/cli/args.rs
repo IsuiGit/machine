@@ -36,5 +36,11 @@ pub enum Command {
         /// Path to sandbox config
         #[arg(default_value = "")]
         path_to_yaml_file: String,
+        /// Listener host
+        #[arg(default_value = "127.0.0.1")]
+        host: String,
+        /// Listener port
+        #[arg(default_value = "8000")]
+        port: String,
     },
 }

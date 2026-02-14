@@ -26,7 +26,7 @@ use std::{
 
 impl Sandbox{
     // Main executable
-    pub fn run(&self, script_path: String) -> Result<(), String>{
+    pub fn run(&self, script_path: String, host: String, port: String) -> Result<(), String>{
         let venv_path = make_environment()?;
         let venv = get_environment(&venv_path)?;
         let file = copy_file(&Path::new(&script_path), &venv.path())?;
@@ -50,7 +50,7 @@ impl Sandbox{
         };
         println!("Get script path as string: {}", script_path_as_str);
         // Create UDP
-        let receiver = PyCodeUdpReceiver::new();
+        let receiver = PyCodeUdpReceiver::new(host, port);
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
         // Start UDP
@@ -60,24 +60,38 @@ impl Sandbox{
                 eprintln!("UDP listener error: {}", e);
             }
         });
-        let args: &[&str] = &[script_path_as_str];
-        println!("Command args {:?}", args);
+        println!("Start forming raw bootstrap...");
+        let bootstrap = format!(
+            r#"
+        import sys
+        sys.argv = [r"{script}"]
+        import runpy
+        runpy.run_path(r"{script}", run_name="__main__")
+        "#,
+            script = script_path_as_str,
+        );
+        println!("Raw bootstrap: {}", bootstrap);
+        let cmd_args: &[&str] = &["-c", &bootstrap];
         println!("Start script execution");
+        // In progress
         let execution_result = self.execute_with_timeout(
             venv.executable().as_ref(),
             venv.path().as_ref(),
-            &args,
+            &cmd_args,
             Duration::from_secs(self.timeout_seconds)
         );
+        // Stop progress
         match execution_result {
             Ok(exec_output) => {
                 let stdout = &exec_output.stdout;
                 let stderr = &exec_output.stderr;
                 if !stderr.is_empty() {
-                    return Err(String::from_utf8_lossy(stderr).to_string());
+                    eprintln!("Error at starting external script:\n{}", String::from_utf8_lossy(stderr).to_string());
                 }
-                let mut file = File::create(output).map_err(|e| format!("{}", e))?;
-                file.write_all(stdout).map_err(|e| format!("{}", e))?;
+                if !stdout.is_empty() {
+                    let mut file = File::create(output).map_err(|e| format!("{}", e))?;
+                    file.write_all(stdout).map_err(|e| format!("{}", e))?;
+                }
                 stop.store(true, Ordering::Relaxed);
                 println!("Stop UDP listener...");
                 udp_handle.join().unwrap();
@@ -109,13 +123,15 @@ impl Sandbox{
         // Get child process id
         let child_id = child.id();
         // Run child in thread
+        println!("Spawn thread...");
         thread::spawn(move || {
+            println!("Waiting until response...");
             match child.wait_with_output() {
                 Ok(output) => {
-                    let _ = sender.send(Ok(output));
+                    let _sender = sender.send(Ok(output));
                 }
                 Err(e) => {
-                    let _ = sender.send(Err(format!("Process error: {}", e)));
+                    let _sender = sender.send(Err(format!("Process error: {}", e)));
                 }
             }
         });

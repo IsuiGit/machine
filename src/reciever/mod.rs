@@ -7,10 +7,10 @@ pub struct PyCodeUdpReceiver{
 }
 
 impl PyCodeUdpReceiver {
-    pub fn new() -> Self {
+    pub fn new(host: String, port: String) -> Self {
         PyCodeUdpReceiver {
-            host: "127.0.0.1".to_string(),
-            port: "9000".to_string(),
+            host: host,
+            port: port,
         }
     }
 }
