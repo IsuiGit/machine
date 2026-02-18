@@ -86,7 +86,7 @@ impl Sandbox{
                 let stdout = &exec_output.stdout;
                 let stderr = &exec_output.stderr;
                 if !stderr.is_empty() {
-                    eprintln!("Error at starting external script:\n{}", String::from_utf8_lossy(stderr).to_string());
+                    return Err(format!("Error at starting external script \n({})", String::from_utf8_lossy(stderr).to_string()));
                 }
                 if !stdout.is_empty() {
                     let mut file = File::create(output).map_err(|e| format!("{}", e))?;
@@ -103,7 +103,7 @@ impl Sandbox{
                 println!("Stop UDP listener...");
                 udp_handle.join().unwrap();
                 println!("UDP listener stopped.");
-                Err(format!("Execution interrupt: {}", e))
+                Err(format!("Execution interrupt ({})", e))
             }
         }
     }
@@ -117,7 +117,7 @@ impl Sandbox{
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
-            .map_err(|e| format!("Failed to spawn process: {}", e))?;
+            .map_err(|e| format!("Failed to spawn process ({})", e))?;
         // Create sender/receiver pair
         let (sender, receiver) = channel();
         // Get child process id
@@ -131,7 +131,7 @@ impl Sandbox{
                     let _sender = sender.send(Ok(output));
                 }
                 Err(e) => {
-                    let _sender = sender.send(Err(format!("Process error: {}", e)));
+                    let _sender = sender.send(Err(format!("Process error ({})", e)));
                 }
             }
         });
@@ -139,6 +139,7 @@ impl Sandbox{
         match receiver.recv_timeout(timeout) {
             Ok(result) => result,
             Err(RecvTimeoutError::Timeout) => {
+                println!("Trying to close child process by pid...");
                 force_kill_process(child_id)?;
                 Err(format!("Timeout after {:?}", timeout))
             }

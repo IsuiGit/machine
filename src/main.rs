@@ -14,6 +14,6 @@ fn main(){
     let status = app.exec(args.command);
     match status {
         Ok(()) => println!("Ended with code 0"),
-        Err(e) => println!("{}", e),
+        Err(e) => eprintln!("{}", e),
     }
 }

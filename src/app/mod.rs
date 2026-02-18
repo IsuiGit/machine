@@ -17,7 +17,7 @@ impl App {
                     println!("--- Python info from PATH ---");
                     println!("Path: {}", info.path().display());
                     println!("Version: {}", info.version());
-                })
+                })?
             }
             Command::CheckEnvironment => {
                 handle_result(get_environment_info(), |info| {
@@ -26,7 +26,7 @@ impl App {
                     println!("Path to executable: {}", info.executable().display());
                     println!("Path to activate.bat: {}", info.activate().display());
                     println!("Python environment version: {}", info.version());
-                })
+                })?
             }
             Command::CheckSandboxCapabilities { path_to_yaml_file: path } => {
                 let sandbox = if path.is_empty() { Sandbox::default() } else { Sandbox::from_yaml_file(path.clone())? };
@@ -44,9 +44,9 @@ impl App {
 }
 
 // TO DO: learn how does it works
-fn handle_result<T, E: Display>(result: Result<T, E>, on_success: impl FnOnce(T)) {
+fn handle_result<T, E: Display>(result: Result<T, E>, on_success: impl FnOnce(T)) -> Result<(), String> {
     match result {
-        Ok(value) => on_success(value),
-        Err(e) => eprintln!("{}", e),
+        Ok(value) => Ok(on_success(value)),
+        Err(e) => return Err(format!("Error: {}", e)),
     }
 }
