@@ -1,5 +1,7 @@
 use super::*;
 
+use crate::logger::logger;
+
 use std::{
     net::UdpSocket,
     sync::{
@@ -19,7 +21,7 @@ impl PyCodeUdpReceiver{
         let socket = UdpSocket::bind(&addr).map_err(|e| format!("Error at PyCodeUpdReciever: {}", e))?;
         // Таймаут, чтобы регулярно проверять флаг остановки
         socket.set_read_timeout(Some(Duration::from_millis(100))).map_err(|e| format!("Error at PyCodeUpdReciever socket: {}", e))?;
-        println!("Listening for bytecode on {}", addr);
+        logger().info(format!("Listening for bytecode on {}", addr));
 
         let mut buf = [0; 65535];
         let mut messages = Vec::new();
@@ -29,10 +31,10 @@ impl PyCodeUdpReceiver{
                 Ok((len, src)) => {
                     let data = &buf[..len];
                     if let Ok(msg) = std::str::from_utf8(data) {
-                        println!("[{}] {}", src, msg);
+                        logger().info(format!("[{}] {}", src, msg));
                         messages.push(msg.to_string());
                     } else {
-                        println!("[{}] Binary data: {:?}", src, data);
+                        logger().info(format!("[{}] Binary data: {:?}", src, data));
                         messages.push(format!("{:?}", data));
                     }
                 }

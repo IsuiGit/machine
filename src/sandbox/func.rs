@@ -7,6 +7,8 @@ use crate::python::func::{
     get_environment,
 };
 
+use crate::logger::logger;
+
 use std::{
     fs::File,
     io::Write,
@@ -30,37 +32,37 @@ impl Sandbox{
         let venv_path = make_environment()?;
         let venv = get_environment(&venv_path)?;
         let file = copy_file(&Path::new(&script_path), &venv.path())?;
-        println!("Copied script file into: {}", file.display());
+        logger().debug(format!("Copied script file into: {}", file.display()));
         let file_size = get_file_size_kb(file.as_ref())?;
         if file_size > self.max_code_size_kb {
             return Err("Your file size more than max file size (in kb)".to_string())
         }
-        println!("Script copied successfuly!");
+        logger().info("Script copied successfuly!".to_string());
         let cwd = get_cwd();
-        println!("Set current work directory as: {}", cwd.display());
+        logger().debug(format!("Set current work directory as: {}", cwd.display()));
         let filename = match get_last(venv.path().as_ref()) {
             Some(name) => format!("{}.machine", name),
             None => String::from("unregistered.machine"),
         };
-        println!("Output filename: {}", filename);
+        logger().info(format!("Output filename: {}", filename));
         let output = cwd.join(filename);
         let script_path_as_str = match file.as_os_str().to_str() {
             Some(s) => s,
             None => return Err("Can't transform path from script file to string".to_string()),
         };
-        println!("Get script path as string: {}", script_path_as_str);
+        logger().debug(format!("Get script path as string: {}", script_path_as_str));
         // Create UDP
         let receiver = PyCodeUdpReceiver::new(host, port);
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
         // Start UDP
-        println!("Start UDP listner on {:?}", receiver);
+        logger().info(format!("Start UDP listner on {:?}", receiver));
         let udp_handle = thread::spawn(move || {
             if let Err(e) = receiver.listen(stop_clone) {
-                eprintln!("UDP listener error: {}", e);
+                logger().error(format!("UDP listener error: {}", e));
             }
         });
-        println!("Start forming raw bootstrap...");
+        logger().debug("Start forming raw bootstrap...".to_string());
         let bootstrap = format!(
             r#"
         import sys
@@ -70,9 +72,9 @@ impl Sandbox{
         "#,
             script = script_path_as_str,
         );
-        println!("Raw bootstrap: {}", bootstrap);
+        logger().info(format!("Raw bootstrap: {}", bootstrap));
         let cmd_args: &[&str] = &["-c", &bootstrap];
-        println!("Start script execution");
+        logger().info("Start script execution".to_string());
         // In progress
         let execution_result = self.execute_with_timeout(
             venv.executable().as_ref(),
@@ -93,16 +95,16 @@ impl Sandbox{
                     file.write_all(stdout).map_err(|e| format!("{}", e))?;
                 }
                 stop.store(true, Ordering::Relaxed);
-                println!("Stop UDP listener...");
+                logger().debug("Stop UDP listener...".to_string());
                 udp_handle.join().unwrap();
-                println!("UDP listener stopped.");
+                logger().info("UDP listener stopped.".to_string());
                 Ok(())
             },
             Err(e) => {
                 stop.store(true, Ordering::Relaxed);
-                println!("Stop UDP listener...");
+                logger().debug("Stop UDP listener...".to_string());
                 udp_handle.join().unwrap();
-                println!("UDP listener stopped.");
+                logger().info("UDP listener stopped.".to_string());
                 Err(format!("Execution interrupt ({})", e))
             }
         }
@@ -123,9 +125,9 @@ impl Sandbox{
         // Get child process id
         let child_id = child.id();
         // Run child in thread
-        println!("Spawn thread...");
+        logger().info("Spawn thread...".to_string());
         thread::spawn(move || {
-            println!("Waiting until response...");
+            logger().debug("Waiting until response...".to_string());
             match child.wait_with_output() {
                 Ok(output) => {
                     let _sender = sender.send(Ok(output));
@@ -139,7 +141,7 @@ impl Sandbox{
         match receiver.recv_timeout(timeout) {
             Ok(result) => result,
             Err(RecvTimeoutError::Timeout) => {
-                println!("Trying to close child process by pid...");
+                logger().debug("Trying to close child process by pid...".to_string());
                 force_kill_process(child_id)?;
                 Err(format!("Timeout after {:?}", timeout))
             }

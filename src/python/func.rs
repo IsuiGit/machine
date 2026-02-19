@@ -13,6 +13,8 @@ use std::{
 
 use uuid::Uuid;
 
+use crate::logger::logger;
+
 // Gettin executable of Python with output -> PathBuf || Exception as a String
 pub fn get_python() -> Result<PathBuf, String> {
     // Create idiomatic python executable names in system
@@ -20,11 +22,11 @@ pub fn get_python() -> Result<PathBuf, String> {
     // Getting PATH data
     let path_var = env::var("PATH").unwrap_or_default();
     // Start looking for
-    println!("Start lO_Oking for Python...");
+    logger().debug("Start lO_Oking for Python...".to_string());
     for search_dir in env::split_paths(&path_var) {
-        println!("Looking in {}", search_dir.display());
+        logger().debug(format!("Looking in {}", search_dir.display()));
         if let Ok(Some(python_path)) = find_file_in_dir(&search_dir, &possible_names) {
-            println!("Python was found at {}", python_path.display());
+            logger().info(format!("Python was found at {}", python_path.display()));
             return Ok(python_path);
         }
     }
@@ -69,11 +71,11 @@ pub fn make_environment() -> Result<PathBuf, String> {
     let python_path = get_python()?;
     // Getting current working directory
     let cwd = get_cwd();
-    println!("Set current working directory as {:?}", cwd);
+    logger().info(format!("Set current working directory as {:?}", cwd));
     let environment_name = Uuid::new_v4().to_string();
     // Create venv path from env_name and cwd
     let venv_path = cwd.join(&environment_name);
-    println!("Path to env is {}", venv_path.display());
+    logger().info(format!("Path to env is {}", venv_path.display()));
     // run Python executable with flags -m venv env_name to create environment
     let exit_status = Command::new(&python_path)
         .args(&["-m", "venv", &environment_name])
@@ -120,6 +122,6 @@ pub fn remove_environment(environment_path: &PathBuf) -> Result<(), String> {
     fs::remove_dir_all(environment_path)
         .map_err(|e| e.to_string())
         .map(|()| {
-            println!("Python env successefuly removed at {}", environment_path.display());
+            logger().info(format!("Python env successefuly removed at {}", environment_path.display()));
         })
 }

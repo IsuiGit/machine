@@ -6,6 +6,8 @@ pub use info::*;
 use std::path::PathBuf;
 use func::remove_environment;
 
+use crate::logger::logger;
+
 pub struct PythonInfo {
     path: PathBuf,
     version: String,
@@ -51,7 +53,7 @@ impl EnvironmentInfo {
 impl Drop for EnvironmentInfo {
     fn drop(&mut self) {
         if let Err(e) = remove_environment(&self.path) {
-            eprintln!("Warning: failed to cleanup venv at {:?}: {}", self.path, e);
+            logger().error(format!("Warning: failed to cleanup venv at {:?}: {}", self.path, e));
         }
     }
 }

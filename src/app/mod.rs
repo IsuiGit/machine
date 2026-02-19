@@ -4,6 +4,7 @@ use crate::python::{
     get_python_info,
     get_environment_info,
 };
+use crate::logger::logger;
 
 use std::fmt::Display;
 
@@ -14,29 +15,29 @@ impl App {
         match command {
             Command::CheckPython => {
                 handle_result(get_python_info(), |info| {
-                    println!("--- Python info from PATH ---");
-                    println!("Path: {}", info.path().display());
-                    println!("Version: {}", info.version());
+                    logger().info("--- Python info from PATH ---".to_string());
+                    logger().info(format!("Path: {}", info.path().display()));
+                    logger().info(format!("Version: {}", info.version()));
                 })?
             }
             Command::CheckEnvironment => {
                 handle_result(get_environment_info(), |info| {
-                    println!("--- Python info from env ---");
-                    println!("Path to environment: {}", info.path().display());
-                    println!("Path to executable: {}", info.executable().display());
-                    println!("Path to activate.bat: {}", info.activate().display());
-                    println!("Python environment version: {}", info.version());
+                    logger().info("--- Python info from env ---".to_string());
+                    logger().info(format!("Path to environment: {}", info.path().display()));
+                    logger().info(format!("Path to executable: {}", info.executable().display()));
+                    logger().info(format!("Path to activate.bat: {}", info.activate().display()));
+                    logger().info(format!("Python environment version: {}", info.version()));
                 })?
             }
             Command::CheckSandboxCapabilities { path_to_yaml_file: path } => {
                 let sandbox = if path.is_empty() { Sandbox::default() } else { Sandbox::from_yaml_file(path.clone())? };
-                println!("--- Sandbox capabilities ({}) ---", if path.is_empty() { "default" } else { &path });
-                println!("Timeout (seconds): {}", sandbox.timeout_seconds());
-                println!("Max code size (KB): {}", sandbox.max_code_size_kb());
+                logger().info(format!("--- Sandbox capabilities ({}) ---", if path.is_empty() { "default" } else { &path }));
+                logger().info(format!("Timeout (seconds): {}", sandbox.timeout_seconds()));
+                logger().info(format!("Max code size (KB): {}", sandbox.max_code_size_kb()));
             }
             Command::Run { path_to_script: path, path_to_yaml_file: yaml_path, host: listener_host, port: listener_port} => {
                 let sandbox = if yaml_path.is_empty() { Sandbox::default() } else { Sandbox::from_yaml_file(yaml_path.clone())? };
-                sandbox.run(path, listener_host, listener_port).map(|_| println!("Script execution successfully complete")).map_err(|e| e)?
+                sandbox.run(path, listener_host, listener_port).map(|_| logger().info("Script execution successfully complete".to_string())).map_err(|e| e)?
             }
         }
         Ok(())

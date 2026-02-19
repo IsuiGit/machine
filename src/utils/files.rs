@@ -4,6 +4,8 @@ use std::{
     io::ErrorKind,
 };
 
+use crate::logger::logger;
+
 // Abstaract checker of non-empty file
 pub fn is_non_empty_file(path: &Path) -> Result<bool, String> {
     match fs::metadata(path) {
@@ -55,7 +57,7 @@ pub fn copy_file(source: &Path, destination: &Path) -> Result<PathBuf, String> {
     let file_name = source.file_name().ok_or("Can't get file name")?.to_string_lossy();
     // Final destination
     let dst = destination.join(&*file_name);
-    println!("Destination filepath: {}", dst.display());
+    logger().info(format!("Destination filepath: {}", dst.display()));
     // Copy sript file into venv
     fs::copy(source, &dst).map_err(|e| format!("Error on copy script: {}", e))?;
     // return filename
