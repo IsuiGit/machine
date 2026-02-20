@@ -22,7 +22,7 @@ impl PyCodeUdpReceiver{
         let socket = UdpSocket::bind(&addr).map_err(|e| format!("Error at PyCodeUpdReciever: {}", e))?;
 
         socket.set_read_timeout(Some(Duration::from_millis(100))).map_err(|e| format!("Error at PyCodeUpdReciever socket: {}", e))?;
-        logger().info(format!("Listening for bytecode on {}", addr));
+        logger().info(format!("Listening for messages on {}", addr));
 
         let mut buf = [0; 65535];
         let mut messages = Vec::new();

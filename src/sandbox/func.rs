@@ -52,7 +52,7 @@ impl Sandbox{
         };
         logger().debug(format!("Get script path as string: {}", script_path_as_str));
         // Create UDP
-        let receiver = PyCodeUdpReceiver::new(host, port);
+        let receiver = PyCodeUdpReceiver::new(host.clone(), port.clone());
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
         // Start UDP
@@ -66,11 +66,19 @@ impl Sandbox{
         let bootstrap = format!(
             r#"
         import sys
+        sys.path.append(r"{ext_dir}")
+        # Import tracer .pyd
+        import machine_tracer
+        # Print self_check result
+        machine_tracer.self_check("{receiver_host}", "{receiver_port}")
         sys.argv = [r"{script}"]
         import runpy
         runpy.run_path(r"{script}", run_name="__main__")
         "#,
             script = script_path_as_str,
+            ext_dir = cwd.display(),
+            receiver_host = host.clone(),
+            receiver_port = port.clone(),
         );
         logger().info(format!("Raw bootstrap: {}", bootstrap));
         let cmd_args: &[&str] = &["-c", &bootstrap];
