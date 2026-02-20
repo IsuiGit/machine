@@ -13,13 +13,14 @@ use std::{
     },
     time::Duration,
     io::ErrorKind,
+    str::from_utf8,
 };
 
 impl PyCodeUdpReceiver{
     pub fn listen(&self, stop: Arc<AtomicBool>) -> Result<Vec<String>, String> {
         let addr = format!("{}:{}", self.host, self.port);
         let socket = UdpSocket::bind(&addr).map_err(|e| format!("Error at PyCodeUpdReciever: {}", e))?;
-        // Таймаут, чтобы регулярно проверять флаг остановки
+
         socket.set_read_timeout(Some(Duration::from_millis(100))).map_err(|e| format!("Error at PyCodeUpdReciever socket: {}", e))?;
         logger().info(format!("Listening for bytecode on {}", addr));
 
@@ -30,7 +31,7 @@ impl PyCodeUdpReceiver{
             match socket.recv_from(&mut buf) {
                 Ok((len, src)) => {
                     let data = &buf[..len];
-                    if let Ok(msg) = std::str::from_utf8(data) {
+                    if let Ok(msg) = from_utf8(data) {
                         logger().info(format!("[{}] {}", src, msg));
                         messages.push(msg.to_string());
                     } else {
