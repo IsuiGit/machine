@@ -28,7 +28,7 @@ use std::{
 
 impl Sandbox{
     // Main executable
-    pub fn run(&self, script_path: String, host: String, port: String) -> Result<(), String>{
+    pub fn run(&self, script_path: String, host: String, port: u16) -> Result<(), String>{
         let venv_path = make_environment()?;
         let venv = get_environment(&venv_path)?;
         let file = copy_file(&Path::new(&script_path), &venv.path())?;
@@ -52,7 +52,7 @@ impl Sandbox{
         };
         logger().debug(format!("Get script path as string: {}", script_path_as_str));
         // Create UDP
-        let receiver = PyCodeUdpReceiver::new(host.clone(), port.clone());
+        let receiver = PyCodeUdpReceiver::new(host.as_ref(), port);
         let stop = Arc::new(AtomicBool::new(false));
         let stop_clone = stop.clone();
         // Start UDP
@@ -69,8 +69,13 @@ impl Sandbox{
         sys.path.append(r"{ext_dir}")
         # Import tracer .pyd
         import machine_tracer
-        # Print self_check result
-        machine_tracer.self_check("{receiver_host}", "{receiver_port}")
+        # Bind addr
+        machine_tracer.init("{receiver_host}", {receiver_port})
+        # Create UdpSender
+        machine_tracer.create_udp_sender()
+        # Send initial message
+        machine_tracer.send_udp_message("Initial message")
+        # Add script path to args
         sys.argv = [r"{script}"]
         import runpy
         runpy.run_path(r"{script}", run_name="__main__")

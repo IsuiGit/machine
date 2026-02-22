@@ -40,7 +40,7 @@ pub enum Command {
         #[arg(default_value = "127.0.0.1")]
         host: String,
         /// Listener port
-        #[arg(default_value = "8000")]
-        port: String,
+        #[arg(default_value = "8080")]
+        port: u16,
     },
 }

@@ -18,11 +18,10 @@ use std::{
 
 impl PyCodeUdpReceiver{
     pub fn listen(&self, stop: Arc<AtomicBool>) -> Result<Vec<String>, String> {
-        let addr = format!("{}:{}", self.host, self.port);
+        let addr = (self.host.as_ref(), self.port);
         let socket = UdpSocket::bind(&addr).map_err(|e| format!("Error at PyCodeUpdReciever: {}", e))?;
-
         socket.set_read_timeout(Some(Duration::from_millis(100))).map_err(|e| format!("Error at PyCodeUpdReciever socket: {}", e))?;
-        logger().info(format!("Listening for messages on {}", addr));
+        logger().info(format!("Listening for messages on {}:{}", addr.0, addr.1));
 
         let mut buf = [0; 65535];
         let mut messages = Vec::new();
