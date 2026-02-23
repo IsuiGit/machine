@@ -70,11 +70,13 @@ impl Sandbox{
         # Import tracer .pyd
         import machine_tracer
         # Bind addr
-        machine_tracer.init("{receiver_host}", {receiver_port})
+        machine_tracer.init("{receiver_host}", {receiver_port}, r"{script}")
         # Create UdpSender
         machine_tracer.create_udp_sender()
         # Send initial message
         machine_tracer.send_udp_message("Initial message")
+        # Setup trace
+        sys.settrace(machine_tracer.trace_callback)
         # Add script path to args
         sys.argv = [r"{script}"]
         import runpy
@@ -129,6 +131,7 @@ impl Sandbox{
         let child = Command::new(exec)
             .current_dir(dir)
             .args(args)
+            .env("PYTHONIOENCODING", "utf-8")
             .stdout(Stdio::piped())
             .stderr(Stdio::piped())
             .spawn()
